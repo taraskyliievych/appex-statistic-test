@@ -1,0 +1,85 @@
+@RestResource(urlMapping='/SObjectStatisticAPI/*')
+
+global with sharing class SObjectStatistic {  
+    global class StatisticData{
+    	public String field;
+        public Integer usage = 3;
+    
+    	public StatisticData(String s0, integer s1) {
+        	this.field = s0;
+        	this.usage = s1;
+		}
+    }
+    
+    global class ResultData{
+    	public Boolean isSuccess;
+        public String error;
+    	public List<StatisticData> usageFields;
+    
+    
+    	public ResultData(Boolean s0, String s1, List<StatisticData> s2) {
+        	this.isSuccess = s0;
+            this.error = s1;
+        	this.usageFields = s2;            
+		}
+    }  
+    
+    
+    @HttpPost
+    global static ResultData postSobjectStatistic() {
+        String sobjectName = RestContext.request.params.get('sobject');
+        return sobjectStatistic(sobjectName);
+    }
+    
+    global static ResultData sobjectStatistic(String sobjectName) {  
+        try {        	
+            List<StatisticData> statisticList = new List<StatisticData>(); 
+        	Map<String, Schema.SObjectType> schemaMap = Schema.getGlobalDescribe();
+			Map<String, Schema.SObjectField> fieldMap = schemaMap.get(sobjectName).getDescribe().fields.getMap();               
+			for(String fieldName : fieldMap.keyset())
+    		{          
+                String fieldType = String.valueOf(Schema.getGlobalDescribe() // or Schema.SOAPType
+    				.get(sobjectName)
+        			.getDescribe()
+       				.fields
+        			.getMap()
+        			.get(fieldName)
+        			.getDescribe()
+        			.getType()); // or getType()
+            
+            	if(fieldName.contains('address')){
+            		break;
+            	}                
+
+                String soql = 'SELECT COUNT() FROM ' + sobjectName;
+            	Integer count = database.countQuery(soql);               
+				                     	                
+                if (fieldType != 'BOOLEAN'){
+                    soql = soql + ' WHERE ' + fieldName + ' != null';
+                } else {
+                     soql = soql + ' WHERE ' + fieldName + ' != FALSE';
+                }
+          		
+      	  		Integer countEmpty = database.countQuery(soql);
+                Integer usagePercent = 0;                
+                if (count == 0) {
+					usagePercent = 0;                    
+                } else if(countEmpty == 0) {
+                    usagePercent = 100;  
+                } else {
+                    usagePercent = (countEmpty/count)*100;
+                }         	
+                StatisticData obj = new StatisticData(fieldName, usagePercent);
+            	statisticList.add(obj);
+    		}
+            
+            ResultData result = new ResultData(true, null, statisticList);  
+            
+            return result;
+        	} catch (Exception e) {
+            ResultData result = new ResultData(false, e.getMessage(), null);
+                
+            return result;
+        }
+    }
+}

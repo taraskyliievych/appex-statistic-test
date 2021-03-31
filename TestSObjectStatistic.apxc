@@ -1,0 +1,129 @@
+@isTest
+public class TestSObjectStatistic {
+    class TestResultData{
+    	public Boolean isSuccess;
+        public String error;
+    	public List<SObjectStatistic.StatisticData> usageFields;
+    
+    	public TestResultData(Boolean s0, String s1, List<SObjectStatistic.StatisticData> s2) {
+        	this.isSuccess = s0;
+            this.error = s1;
+        	this.usageFields = s2;            
+		}
+    }
+    
+    class TestStatisticData{
+    	public String field;
+        public Integer usage = 3;
+    
+    	public TestStatisticData(String s0, integer s1) {
+        	this.field = s0;
+        	this.usage = s1;
+		}
+    }
+    
+    @isTest
+    static void testResultData(){      
+        Test.startTest();
+        
+        List<SObjectStatistic.StatisticData> testList = new List<SObjectStatistic.StatisticData>();
+        testList.add(new SObjectStatistic.StatisticData('test', 10));
+        String testString = 'TheTest';
+        Boolean testBoolean = true;
+        
+        SObjectStatistic.ResultData actual = new SObjectStatistic.ResultData(testBoolean, testString, testList);
+        TestResultData expected = new TestResultData(testBoolean, testString, testList);       
+                
+        System.debug(expected);
+        System.debug(actual);
+		System.assertEquals(JSON.serialize(expected), JSON.serialize(actual));
+		Test.stopTest();		
+	}
+    
+    @isTest
+    static void testStatisticData(){      
+        Test.startTest();
+        
+        String testString = 'TheTest';
+        Integer testInt = 111;
+        
+        SObjectStatistic.StatisticData actual = new SObjectStatistic.StatisticData(testString, testInt);
+        TestStatisticData expected = new TestStatisticData(testString, testInt);
+        
+        
+        
+        System.debug(expected);
+        System.debug(actual);
+		System.assertEquals(JSON.serialize(expected), JSON.serialize(actual));
+        
+		Test.stopTest();		
+	}
+    
+    @isTest
+    static void testFailGetAllSObjects() {        
+        
+        SObjectStatistic.ResultData actual = SObjectStatistic.sobjectStatistic('123');
+        SObjectStatistic.ResultData expected = new SObjectStatistic.ResultData(false, 'Attempt to de-reference a null object', null);
+        
+        System.debug(expected);
+        System.debug(actual);
+		System.assertEquals(JSON.serialize(expected), JSON.serialize(actual));        
+        
+        System.debug(actual);                       
+	}
+    
+    @isTest
+    static void testGetAllSObjects() {        
+        String sobjectName = 'Lead';
+        SObjectStatistic.ResultData actual = SObjectStatistic.sobjectStatistic(sobjectName);
+        
+        List<SObjectStatistic.StatisticData> statisticList = new List<SObjectStatistic.StatisticData>(); 
+        
+        Map<String, Schema.SObjectType> schemaMap = Schema.getGlobalDescribe();
+			Map<String, Schema.SObjectField> fieldMap = schemaMap.get(sobjectName).getDescribe().fields.getMap();               
+			for(String fieldName : fieldMap.keyset())
+    		{        
+                String soql = 'SELECT COUNT() FROM ' + sobjectName;
+            	Integer count = database.countQuery(soql);
+                
+                if(fieldName.contains('address')){
+            		break;
+            	}  
+                
+                String fieldType = String.valueOf(Schema.getGlobalDescribe() // or Schema.SOAPType
+    				.get(sobjectName)
+        			.getDescribe()
+       				.fields
+        			.getMap()
+        			.get(fieldName)
+        			.getDescribe()
+        			.getType()); // or getType()
+				                     	                
+                if (fieldType != 'BOOLEAN'){
+                    soql = soql + ' WHERE ' + fieldName + ' != null';
+                } else {
+                     soql = soql + ' WHERE ' + fieldName + ' != FALSE';
+                }
+          		
+      	  		Integer countEmpty = database.countQuery(soql);
+                Integer usagePercent = 0;               
+                if (count == 0) {
+					usagePercent = 0;                    
+                } else if(countEmpty == 0) {
+                    usagePercent = 100;  
+                } else {
+                    usagePercent = (countEmpty/count)*100;
+                }         	
+                SObjectStatistic.StatisticData obj = new SObjectStatistic.StatisticData(fieldName, usagePercent);
+            	statisticList.add(obj);
+    		}
+            
+        SObjectStatistic.ResultData expected = new SObjectStatistic.ResultData(true, null, statisticList);
+        
+        System.debug(expected);
+        System.debug(actual);
+		System.assertEquals(JSON.serialize(expected), JSON.serialize(actual));        
+        
+        System.debug(actual);                       
+	}
+}
