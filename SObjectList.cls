@@ -1,6 +1,7 @@
 @RestResource(urlMapping='/SObjectListAPI/*')
 
-global with sharing class SObjectList {
+global with sharing class SObjectList
+{
     
     @HttpPost
     global static List<String> getAllSObjects()

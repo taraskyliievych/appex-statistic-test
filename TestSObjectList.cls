@@ -1,11 +1,13 @@
 @isTest
-public class TestSObjectList {
+public class TestSObjectList 
+{
 	@isTest
-	static void testGetAllSObjects(){	
+	static void testGetAllSObjects()
+	{	
         Test.startTest();
         list<string> actual= SObjectList.getAllSObjects();
         List<String> expected = new List<String>();
-
+		
     	for(Schema.SObjectType objTyp : Schema.getGlobalDescribe().Values())
     	{
         	Schema.DescribeSObjectResult describeSObjectResultObj = objTyp.getDescribe();
